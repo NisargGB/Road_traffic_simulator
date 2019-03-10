@@ -9,7 +9,7 @@
 # Comment starts with #
 
 # 1. Define Road Parameters
-Road_Id = 1			# Unique Id for the simulation
+Road_Id = 1			# Unique Id for the simulation 
 Road_Length = 30
 Road_Width = 5
 Road_Signal = 15
@@ -19,24 +19,25 @@ Default_MaxSpeed = 1 		# Max Speed per second
 Default_Acceleration = 1	# Increase in speed per second
 
 # 3. Define params for specific vehicle types
-Vehicle_Type = Car
+Vehicle_Type = Car		
 Vehicle_Length = 2
 Vehicle_Width = 2
-Vehicle_MaxSpeed = 3
+Vehicle_MaxSpeed = 1
 Vehicle_Acceleration = 1
 end_v
 
-Vehicle_Type = Bike
+Vehicle_Type = Bike		
 Vehicle_Length = 2
 Vehicle_Width = 1
-Vehicle_MaxSpeed = 4
+Vehicle_MaxSpeed = 3
 Vehicle_Acceleration = 2
 end_v
 
 Vehicle_Type = Bus
 Vehicle_Length = 3
 Vehicle_Width = 2
-Vehicle_MaxSpeed = 2
+Vehicle_MaxSpeed = 1
+Vehicle_Acceleration = 0
 end_v
 
 Vehicle_Type = Truck
@@ -44,13 +45,6 @@ Vehicle_Length = 4
 Vehicle_Width = 2
 Vehicle_MaxSpeed = 1
 Vehicle_Acceleration = 0
-end_v
-
-Vehicle_Type = Train
-Vehicle_Length = 6
-Vehicle_Width = 2
-Vehicle_MaxSpeed = 2
-Vehicle_Acceleration = 1
 end_v
 
 # Definitions over
@@ -64,14 +58,14 @@ Car GREEN
 Bike BLUE
 Bike GREEN
 Bus BLUE
-Train GREY
+Truck GREY
 
 # Turn the signal green
 Signal GREEN
 
 Car GREEN
 Bike BLUE
-Train GREEN
+Truck GREEN
 Bus BLUE
-Truck WHITE
+
 END			# If signal is GREEN, end should wait till road is clear
