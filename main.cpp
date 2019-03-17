@@ -20,14 +20,15 @@ using std::string;
 GLfloat angle = 0.0f;  // rotational angle of the shapes
 GLfloat xcoord[100];
 GLfloat ycoord[100];
-int refreshMills = 1000; // refresh interval in milliseconds
+int refreshMills = 100; // refresh interval in milliseconds
 int frame_num = 0;
 int counter = 1;
 
 string signal_state;
 int road_signal;
-const int road_length = 30;
-const int road_width = 5;
+const int road_length = 60;
+const int road_width = 10;
+const float gap = (1.6 / (road_width - 1));
 
 
 struct Road
@@ -68,7 +69,7 @@ public:
 
 Vehicle* array[100] = { nullptr };
 string road_layout[(::road_length)*(::road_width)] = { "-" };
-int grid[30 * 5] = { 0 };
+int grid[road_length * road_width] = { 0 };
 
 /* Initialize OpenGL Graphics */
 void initGL() {
@@ -81,7 +82,7 @@ void initGL() {
 void Timer(int value) {
 	glutPostRedisplay();      // Post re-paint request to activate display()
 	glutTimerFunc(refreshMills, Timer, 0); // next Timer call milliseconds later
-	printf("%d", frame_num);
+	//printf("%d", frame_num);
 	frame_num++;
 }
 
@@ -127,7 +128,7 @@ bool is_empty_or_not(int *grid, int i, int y, int upto, int x)
 {
 	for (int k = 0; x + k < y + upto + 1; k++)
 	{
-		if (i < 0 || i >= 5 || grid[i*30 + x + k] > 0)
+		if (i < 0 || i >= road_width || grid[i*road_length + x + k] > 0)
 			return false;
 	}
 	return true;
@@ -136,16 +137,16 @@ bool is_empty_or_not(int *grid, int i, int y, int upto, int x)
 void fillOccupancy(int* grid, string* layout, int i, int j, int l, int w, string vChar)
 {
 	// cout << i << j << l << w << vChar << endl;
-	if (i < 5)
+	if (i < road_width)
 	{
 		for (int m = 0; m < w; m++)
 		{
 			for (int n = l - 1; n >= 0; n--)
 			{
-				if (j - n >= 0 && j - n < 30)
+				if (j - n >= 0 && j - n < road_length)
 				{
-					grid[(i + m)*30 + j - n] = 1;
-					layout[(i + m)*30 + j - n] = vChar;
+					grid[(i + m)*road_length + j - n] = 1;
+					layout[(i + m)*road_length + j - n] = vChar;
 				}
 			}
 		}
@@ -154,18 +155,18 @@ void fillOccupancy(int* grid, string* layout, int i, int j, int l, int w, string
 
 void updateGrid(Vehicle* array[], int* grid, string* layout)
 {
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < road_width; i++)
 	{
-		for (int j = 0; j < 30; j++)
+		for (int j = 0; j < road_length; j++)
 		{
-			grid[i*30 + j] = 0;
-			layout[i*30 + j] = "-";
+			grid[i*road_length + j] = 0;
+			layout[i*road_length + j] = "-";
 		}
 	}
 	int k = 0;
 	while (array[k] != nullptr)
 	{
-		if (array[k]->indexi >= 0 && array[k]->indexi < 30)
+		if (array[k]->indexi >= 0 && array[k]->indexi < road_length)
 		{
 			fillOccupancy(grid, layout, array[k]->indexi, array[k]->indexj, array[k]->vehicle_length, array[k]->vehicle_width, array[k]->v_char);
 		}
@@ -176,16 +177,16 @@ void updateGrid(Vehicle* array[], int* grid, string* layout)
 
 void printLayout(string *layout, Vehicle* array[])
 {
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < road_width; i++)
 	{
 
-		for (int j = 0; j < 30; j++)
+		for (int j = 0; j < road_length; j++)
 		{
 			if (::signal_state == "RED" and j == ::road_signal)
 			{
 				cout << "|";
 			}
-			cout << layout[i*30 + j];
+			cout << layout[i*road_length + j];
 		}
 		cout << endl;
 	}
@@ -193,32 +194,60 @@ void printLayout(string *layout, Vehicle* array[])
 	int i = 0;
 	while (array[i] != nullptr)
 	{
-		xcoord[i] = ((float)(array[i]->indexj ) / (float)30);
-		ycoord[i] = ((float)(4-(array[i]->indexi)) / (float)5);
-		float length = ((float)(array[i]->vehicle_length) / (float)30);
-		float width = ((float)(array[i]->vehicle_width) / (float)20);
-
+		xcoord[i] = (2*(float)(array[i]->indexj ) / (float)road_length) - 1;
+		ycoord[i] = ((road_width - 1)/2 - array[i]->indexi)*gap;
+		float length = ((2*(float)(array[i]->vehicle_length) / (float)road_length)*2)*0.8;	//factor of two for overall scaling of x axis and 0.8 to prevent gaps
+		float width = (((array[i]->vehicle_width)*gap) - gap/4)*0.8;	//window scaled by 0.8
 		//printf("%f  %f", xcoord[i], ycoord[i]);
 		float r1 = -1.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (2.0)));
 		float r2 = -1.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (2.0)));
 		float r3 = -1.0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (2.0)));
 
 		glPushMatrix();                     // Save model-view matrix setting
-		glTranslatef(xcoord[i] - length / 2, ycoord[i] + width / 2, 0.0f);    // Translate
+		glTranslatef((xcoord[i]*2 - length / 2), (ycoord[i]*0.8 - (width - gap*0.8)/2), 0.0f);    // Translate
 		//glRotatef(angle, 0.0f, 0.0f, 1.0f); // rotate by angle in degrees
 		glBegin(GL_QUADS);                  // Each set of 4 vertices form a quad
-		glColor3f(1.0f, 0.0f, 0.0f);     // Red
+		if(array[i]->color == "BLUE")
+		{
+			glColor3f(0.0f, 0.0f, 1.0f);     // BLue
+		}
+		else if (array[i]->color == "GREEN")
+		{
+			glColor3f(0.0f, 1.0f, 0.0f);     // Green
+		}
+		else if (array[i]->color == "BLACK")
+		{
+			glColor3f(1.0f, 0.0f, 0.0f);     // BLack but RED
+		}
+		else if (array[i]->color == "BROWN")
+		{
+			glColor3f(1.0f, 1.0f, 0.0f);     // Brown but YELLOW
+		}
+		else if (array[i]->color == "GREY")
+		{
+			glColor3f(0.4f, 0.4f, 0.4f);     // Grey
+		}
+		else if (array[i]->color == "WHITE")
+		{
+			glColor3f(1.0f, 1.0f, 1.0f);     // White
+		}
+		else
+		{
+			glColor3f(0.5f, 0.0f, 0.0f);     // Default CYAN
+		}
 		glVertex2f((0 - length) / 2, (0 - width) / 2);
 		glVertex2f(length / 2, (0 - width) / 2);
 		glVertex2f(length / 2, width / 2);
-		glColor3f(0.0f, 1.0f, 0.0f);     // Green
+		glColor3f(1.0f, 1.0f, 1.0f);     // white
 		glVertex2f((0 - length) / 2, width / 2);
 		glEnd();
+
 		glPopMatrix();                      // Restore the model-view matrix
 		i++;
 	}
+
 	glutSwapBuffers();   // Double buffered - swap the front and back buffers
-	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 void updatePosition(Vehicle* array[], int* grid)
@@ -295,34 +324,34 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					if (is_empty_or_not(grid, ib - 1, jb, b->speed, ja))
 					{
 						a->indexi = ib - 1;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib + 1, jb, b->speed, ja))
 					{
 						a->indexi = ib + 1;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib - 2, jb, b->speed, ja))
 					{
 						a->indexi = ib - 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib + 2, jb, b->speed, ja))
 					{
 						a->indexi = ib + 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					// a would change the lane; grid update
 					//during changing lane, acceleration would be zero
@@ -333,24 +362,24 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					if (is_empty_or_not(grid, ib + 3, jb, b->speed, ja))
 					{
 						a->indexi = ib + 1;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib - 3, jb, b->speed, ja))
 					{
 						a->indexi = ib - 1;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					a->speed = b->speed;
 					bool temp1 = true;
 					for (int m = b->vehicle_length; jb - m > ja; m++)
 					{
-						if (grid[a->indexi*30 + b->indexj - m] == 1)
+						if (grid[a->indexi*road_length + b->indexj - m] == 1)
 							temp1 = false;
 					}
 					if (temp1 == true)
@@ -373,34 +402,34 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					if (is_empty_or_not(grid, ib + 2, jb, b->speed, ja))
 					{
 						a->indexi = ib + 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib - 2, jb, b->speed, ja) && ia == ib)
 					{
 						a->indexi = ib - 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib - 1, jb, b->speed, ja))
 					{
 						a->indexi = ib - 1;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib + 3, jb, b->speed, ja) && ia == ib + 1)
 					{
 						a->indexi = ib + 3;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}// a would change the lane;
 					//during changing lane, acceleration would be zero
 					return true;
@@ -410,24 +439,24 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					if ((is_empty_or_not(grid, ib + 4, jb, b->speed, ja) && ia == ib + 1) || (is_empty_or_not(grid, ib + 3, jb, b->speed, ja) && ia == ib))
 					{
 						a->indexi = ib + 1;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					else if ((is_empty_or_not(grid, ib - 2, jb, b->speed, ja) && ia == ib + 1) || (is_empty_or_not(grid, ib - 3, jb, b->speed, ja) && ia == ib))
 					{
 						a->indexi = ib - 1;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
 					}
 					a->speed = b->speed;
 					bool temp1 = true;
 					for (int m = b->vehicle_length; jb - m > ja; m++)
 					{
-						if (grid[a->indexi*30 + b->indexj - m] == 1)
+						if (grid[a->indexi*road_length + b->indexj - m] == 1)
 							temp1 = false;
 					}
 					if (temp1 == true)
@@ -452,26 +481,26 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					{
 						cout << "enter " << endl;
 						a->indexi = ib + 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[(ia + 1)*30 + ja] = 0;
-						grid[(ia + 1)*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
-						grid[(a->indexi + 1)*30 + ja] = 1;
-						grid[(a->indexi + 1)*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[(ia + 1)*road_length + ja] = 0;
+						grid[(ia + 1)*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
+						grid[(a->indexi + 1)*road_length + ja] = 1;
+						grid[(a->indexi + 1)*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib - 2, jb, b->speed, ja) && is_empty_or_not(grid, ib - 1, jb, b->speed, ja))
 					{
 						a->indexi = ib - 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[(ia + 1)*30 + ja] = 0;
-						grid[(ia + 1)*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
-						grid[(a->indexi + 1)*30 + ja] = 1;
-						grid[(a->indexi + 1)*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[(ia + 1)*road_length + ja] = 0;
+						grid[(ia + 1)*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
+						grid[(a->indexi + 1)*road_length + ja] = 1;
+						grid[(a->indexi + 1)*road_length + ja - 1] = 1;
 					}
 					// a would change the lane;
 					//during changing lane, acceleration would be zero
@@ -483,7 +512,7 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					bool temp1 = true;
 					for (int m = b->vehicle_length; jb - m > ja; m++)
 					{
-						if (grid[a->indexi*30 + b->indexj - m] == 1)
+						if (grid[a->indexi*road_length + b->indexj - m] == 1)
 							temp1 = false;
 					}
 					if (temp1 == true)
@@ -507,26 +536,26 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					{
 						cout << "enter " << endl;
 						a->indexi = ib + 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[(ia + 1)*30 + ja] = 0;
-						grid[(ia + 1)*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
-						grid[(a->indexi + 1)*30 + ja] = 1;
-						grid[(a->indexi + 1)*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[(ia + 1)*road_length + ja] = 0;
+						grid[(ia + 1)*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
+						grid[(a->indexi + 1)*road_length + ja] = 1;
+						grid[(a->indexi + 1)*road_length + ja - 1] = 1;
 					}
 					else if (is_empty_or_not(grid, ib - 2, jb, b->speed, ja) && is_empty_or_not(grid, ib - 1, jb, b->speed, ja))
 					{
 						a->indexi = ib - 2;
-						grid[ia*30 + ja] = 0;
-						grid[ia*30 + ja - 1] = 0;
-						grid[(ia + 1)*30 + ja] = 0;
-						grid[(ia + 1)*30 + ja - 1] = 0;
-						grid[a->indexi*30 + ja] = 1;
-						grid[a->indexi*30 + ja - 1] = 1;
-						grid[(a->indexi + 1)*30 + ja] = 1;
-						grid[(a->indexi + 1)*30 + ja - 1] = 1;
+						grid[ia*road_length + ja] = 0;
+						grid[ia*road_length + ja - 1] = 0;
+						grid[(ia + 1)*road_length + ja] = 0;
+						grid[(ia + 1)*road_length + ja - 1] = 0;
+						grid[a->indexi*road_length + ja] = 1;
+						grid[a->indexi*road_length + ja - 1] = 1;
+						grid[(a->indexi + 1)*road_length + ja] = 1;
+						grid[(a->indexi + 1)*road_length + ja - 1] = 1;
 					}
 					// a would change the lane;
 					//during changing lane, acceleration would be zero
@@ -538,7 +567,7 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 					bool temp1 = true;
 					for (int m = b->vehicle_length; jb - m > ja; m++)
 					{
-						if (grid[a->indexi*30 + b->indexj - m] == 1)
+						if (grid[a->indexi*road_length + b->indexj - m] == 1)
 							temp1 = false;
 					}
 					if (temp1 == true)
@@ -562,12 +591,12 @@ void display() {
 
 	if (::array[counter - 1] != nullptr)
 	{
-		for (int l = 0; l < 5; l++)
+		for (int l = 0; l < road_width; l++)
 		{
 			int temp = 1;
 			for (int w = 0; w < ::array[counter - 1]->vehicle_width; w++)
 			{
-				if (grid[(l + w) * 30] != 0)
+				if (grid[(l + w) * road_length] != 0)
 				{
 					temp = 0;
 					break;
@@ -585,16 +614,27 @@ void display() {
 	}
 	
 	counter++;
+	for (int i = 0; i < road_width; i++)
+	{
+		glColor3f(1.0f, 1.0f, 1.0f);		//white
+		glBegin(GL_LINES);
+		for (int i = 0; i < 2 * road_width - 1; i++)
+		{
+			glVertex2f(-2.0f, ((i-road_width+1)*gap/2)*0.8);
+			glVertex2f(2.0f, ((i-road_width+1)*gap/2)*0.8);
+		}
+		glEnd();
+	}
 	execute(::array, ::grid, ::road_layout);
 	
 
 
 	/*for (int i = 0; (i < 100) && ((array[i]) != nullptr); i++)
 	{
-		xcoord[i] = ((float)(array[i]->indexj) / (float)30);
-		ycoord[i] = ((float)(array[i]->indexi) / (float)5);
-		float length = ((float)(array[i]->vehicle_length) / (float)30);
-		float width = ((float)(array[i]->vehicle_width) / (float)5);
+		xcoord[i] = ((float)(array[i]->indexj) / (float)road_length);
+		ycoord[i] = ((float)(array[i]->indexi) / (float)road_width);
+		float length = ((float)(array[i]->vehicle_length) / (float)road_length);
+		float width = ((float)(array[i]->vehicle_width) / (float)road_width);
 
 		//printf("%f  %f", xcoord[i], ycoord[i]);
 
@@ -650,7 +690,7 @@ int main(int argc, char** argv)
 			{
 				file >> data;
 				file >> data;
-				/*5 = stoi(data);
+				/*road_width = stoi(data);
 				::road_width = stoi(data);*/
 			}
 			if (data == "Road_Signal")
@@ -760,12 +800,12 @@ int main(int argc, char** argv)
 						::array[i]->color = word;
 						cout << ::array[i]->vehicle_type << " " << i << ::array[i]->vehicle_length << " " << ::array[i]->vehicle_width << " " << ::array[i]->vehicle_maxspeed << " " << ::array[i]->vehicle_acceleration << " " << ::array[i]->color << " " << ::array[i]->vehicle_type << endl;
 						cout << ::array[i]->v_char << endl;
-						/*for (int l = 0; l < 5; l++)
+						/*for (int l = 0; l < road_width; l++)
 						{
 							int temp = 1;
 							for (int w = 0; w < ::array[i]->vehicle_width; w++)
 							{
-								if (grid[(l + w) * 30] != 0)
+								if (grid[(l + w) * road_length] != 0)
 								{
 									temp = 0;
 									break;
@@ -820,38 +860,38 @@ int main(int argc, char** argv)
 	::array[i]->speed = 3;
 	::array[i]->indexi = 2;
 	::array[i]->indexj = 5;
-	grid[2 * 30 + 5] = 1;
-	grid[2 * 30 + 4] = 1;
-	//grid[1*30 + 3] = 1;
-	grid[3 * 30 + 5] = 1;
-	grid[3 * 30 + 4] = 1;
-	//grid[2*30 + 3] = 1;
+	grid[2 * road_length + 5] = 1;
+	grid[2 * road_length + 4] = 1;
+	//grid[1*road_length + 3] = 1;
+	grid[3 * road_length + 5] = 1;
+	grid[3 * road_length + 4] = 1;
+	//grid[2*road_length + 3] = 1;
 	::array[i + 1]->indexi = 3;
 	::array[i + 1]->indexj = 3;
 	::array[i + 1]->speed = 5;
-	grid[3 * 30 + 3] = 1;
-	grid[3 * 30 + 2] = 1;
-	//grid[3*30 + 2] = 1;
-	//grid[3*30 + 1] = 1;
-	grid[4 * 30 + 5] = 1;
-	grid[4 * 30 + 4] = 1;
-	grid[1 * 30 + 5] = 1;
-	grid[1 * 30 + 4] = 1;
+	grid[3 * road_length + 3] = 1;
+	grid[3 * road_length + 2] = 1;
+	//grid[3*road_length + 2] = 1;
+	//grid[3*road_length + 1] = 1;
+	grid[4 * road_length + 5] = 1;
+	grid[4 * road_length + 4] = 1;
+	grid[1 * road_length + 5] = 1;
+	grid[1 * road_length + 4] = 1;
 	cout << boolalpha; //for printing true or false;
 	for (int l = 0; l < 5; l++)
 	{
-		for (int k = 0; k < 30; k++)
+		for (int k = 0; k < road_length; k++)
 		{
-			cout << grid[l*30 + k];
+			cout << grid[l*road_length + k];
 		}
 		cout << endl;
 	}
 	cout << "checking lane " << check_lane_exchange(grid, ::array[i + 1], ::array[i]) << endl;
 	for (int l = 0; l < 5; l++)
 	{
-		for (int k = 0; k < 30; k++)
+		for (int k = 0; k < road_length; k++)
 		{
-			cout << grid[l*30 + k];
+			cout << grid[l*road_length + k];
 		}
 		cout << endl;
 	}
@@ -861,8 +901,8 @@ int main(int argc, char** argv)
 
 	glutInit(&argc, argv);          // Initialize GLUT
 	glutInitDisplayMode(GLUT_DOUBLE);  // Enable double buffered mode
-	glutInitWindowSize(1280, 960);   // Set the window's initial width & height - non-square
-	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
+	glutInitWindowSize(1560, 960);   // Set the window's initial width & height - non-square
+	glutInitWindowPosition(0, 0); // Position the window's initial top-left corner
 	glutCreateWindow("Animation via Idle Function");  // Create window with the given title
 	glutDisplayFunc(display);       // Register callback handler for window re-paint event
 	glutReshapeFunc(reshape);       // Register callback handler for window re-size event
