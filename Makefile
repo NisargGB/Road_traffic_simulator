@@ -1,15 +1,11 @@
-objects = Vehicle.o simulation.o
+objects = main.o
 CC = g++
-CFLAGS = -Wall -c 
+CFLAGS = -Wall -c
 
 edit : $(objects)
-						$(CC) $(objects) -o COP_Simulator
+						$(CC) $(objects) -o COP_Simulator -lglu32 -lopengl32 -lfreeglut -lglew32
 
-Vehicle.o : Vehicle.cpp
-						$(CC) $(CFLAGS) Vehicle.cpp
-simulation.o : simulation.cpp
-						$(CC) $(CFLAGS) simulation.cpp
-
-
+main.o : main.cpp
+						$(CC) $(CFLAGS) main.cpp
 clean :
 						rm edit $(objects)
