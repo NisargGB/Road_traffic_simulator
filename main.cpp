@@ -20,7 +20,7 @@ using std::string;
 GLfloat angle = 0.0f;  // rotational angle of the shapes
 GLfloat xcoord[100];
 GLfloat ycoord[100];
-int refreshMills = 100; // refresh interval in milliseconds
+int refreshMills = 1000; // refresh interval in milliseconds
 int frame_num = 0;
 int frame = 1;
 
@@ -165,12 +165,10 @@ void fillOccupancy(int* grid, string* layout, int i, int j, int l, int w, string
 
 void updateGrid(Vehicle* array[], int* grid, string* layout)
 {
-	//cout << "here6" << endl;
 	for (int i = 0; i < road_width; i++)
 	{
 		for (int j = 0; j < road_length; j++)
 		{
-			//        cout << "here7" << endl;
 			grid[i*road_length + j] = 0;
 			layout[i*road_length + j] = "-";
 		}
@@ -180,7 +178,6 @@ void updateGrid(Vehicle* array[], int* grid, string* layout)
 	{
 		if (array[k]->indexi >= 0 && array[k]->indexj < road_length + array[k]->vehicle_width)
 		{
-			//cout << "here5" << endl;
 			fillOccupancy(grid, layout, array[k]->indexi, array[k]->indexj, array[k]->vehicle_length, array[k]->vehicle_width, array[k]->v_char);
 		}
 		k++;
@@ -260,7 +257,7 @@ void printLayout(string *layout, Vehicle* array[])
 	}
 
 	glutSwapBuffers();   // Double buffered - swap the front and back buffers
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 void updatePosition(Vehicle* array[], int* grid)
@@ -526,7 +523,7 @@ bool check_lane_exchange(int* grid, Vehicle* a, Vehicle* b)   //a is the vehicle
 				{
 					if (isEmptyLane(grid, ib + b->vehicle_width, jb, b->speed, ja, a->vehicle_width))
 					{
-						cout << "enter " << endl;
+///						cout << "enter " << endl;
 						a->indexi = ib + b->vehicle_width;
 						gridOvertakeUpdate(grid, ia, a);
 					}
@@ -708,7 +705,7 @@ void display() {
 			frame++;        //if there is no space for the vehicle then reject its enterance
 		else
 		{
-			cout << "----------------------------------------------------------------------------------" << frame << endl;;
+						cout << "----------------------------------------------------------------------------------" << frame << endl;;
 			int l;
 			for (l = frame-1; array2[l] != nullptr; l++)
 			{
